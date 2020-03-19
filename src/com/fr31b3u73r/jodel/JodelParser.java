@@ -1,65 +1,62 @@
 package com.fr31b3u73r.jodel;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 public class JodelParser {
     /**
      * Parses a list of Jodels
+     *
      * @param jodelsJSON String containing a JSON with jodels (from rawResponse)
      * @return A list of objects from type JodelPost
      */
     public static List<JodelPost> getParsedJodels(String jodelsJSON) {
-        List<JodelPost> result = new ArrayList<JodelPost>();
-        JSONParser parserJodels = new JSONParser();
+        List<JodelPost> result = new ArrayList<>();
         try {
-            JSONObject responsePostJson = (JSONObject) parserJodels.parse(jodelsJSON);
-            JSONArray jodelsArray = (JSONArray) responsePostJson.get("posts");
+            JsonObject responsePostJson = JsonParser.parseString(jodelsJSON).getAsJsonObject();
+            JsonArray jodelsArray = responsePostJson.getAsJsonArray("posts");
 
-            Iterator i = jodelsArray.iterator();
-
-            while (i.hasNext()) {
-                JSONObject jodel = (JSONObject) i.next();
+            for (JsonElement jsonElement : jodelsArray) {
+                JsonObject jodel = jsonElement.getAsJsonObject();
                 JodelPost jodelPost = new JodelPost();
-                jodelPost.message = (String) jodel.get("message");
-                jodelPost.createdAt = (String) jodel.get("created_at");
-                jodelPost.updatedAt = (String) jodel.get("updated_at");
-                jodelPost.pinCount = (long) jodel.get("pin_count");
-                jodelPost.color = (String) jodel.get("color");
-                jodelPost.gotThanks = (boolean) jodel.get("got_thanks");
-                jodelPost.thanksCount = (long) jodel.get("thanks_count");
+                jodelPost.message = jodel.get("message").getAsString();
+                jodelPost.createdAt = jodel.get("created_at").getAsString();
+                jodelPost.updatedAt = jodel.get("updated_at").getAsString();
+                jodelPost.pinCount = jodel.get("pin_count").getAsLong();
+                jodelPost.color = jodel.get("color").getAsString();
+                jodelPost.gotThanks = jodel.get("got_thanks").getAsBoolean();
+                jodelPost.thanksCount = jodel.get("thanks_count").getAsLong();
                 try {
-                    jodelPost.imageApproved = (boolean) jodel.get("image_approved");
-                    jodelPost.imageURL = (String) jodel.get("image_url");
-                    jodelPost.thumbnailURL = (String) jodel.get("thumbnail_url");
-                } catch (Exception e) {
+                    jodelPost.imageApproved = jodel.get("image_approved").getAsBoolean();
+                    jodelPost.imageURL = jodel.get("image_url").getAsString();
+                    jodelPost.thumbnailURL = jodel.get("thumbnail_url").getAsString();
+                } catch (Exception ignored) {
                 }
                 try {
-                    jodelPost.fromHome = (boolean) jodel.get("from_home");
-                } catch (Exception e) {
+                    jodelPost.fromHome = jodel.get("from_home").getAsBoolean();
+                } catch (Exception ignored) {
                 }
                 try {
-                    jodelPost.childCount = (long) jodel.get("child_count");
-                } catch (Exception e) {
+                    jodelPost.childCount = jodel.get("child_count").getAsLong();
+                } catch (Exception ignored) {
                 }
-                jodelPost.replier = (long) jodel.get("replier");
-                jodelPost.postID = (String) jodel.get("post_id");
-                jodelPost.discoveredBy = (long) jodel.get("discovered_by");
-                jodelPost.voteCount = (long) jodel.get("vote_count");
-                jodelPost.shareCount = (long) jodel.get("share_count");
-                jodelPost.userHandle = (String) jodel.get("user_handle");
-                jodelPost.postOwn = (String) jodel.get("post_own");
-                jodelPost.distance = (long) jodel.get("distance");
+                jodelPost.replier = jodel.get("replier").getAsLong();
+                jodelPost.postID = jodel.get("post_id").getAsString();
+                jodelPost.discoveredBy = jodel.get("discovered_by").getAsLong();
+                jodelPost.voteCount = jodel.get("vote_count").getAsLong();
+                jodelPost.shareCount = jodel.get("share_count").getAsLong();
+                jodelPost.userHandle = jodel.get("user_handle").getAsString();
+                jodelPost.postOwn = jodel.get("post_own").getAsString();
+                jodelPost.distance = jodel.get("distance").getAsLong();
                 result.add(jodelPost);
             }
 
-        } catch (ParseException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return result;
@@ -67,73 +64,71 @@ public class JodelParser {
 
     /**
      * Parses a single Jodel (with replies)
+     *
      * @param jodelJSON String containing a JSON with a single jodel (from rawResponse)
      * @return An object of type JodelPost containing parsed Jodel with replies
      */
     public static JodelPost getParsedJodel(String jodelJSON) {
-        JSONParser parserJodels = new JSONParser();
         JodelPost jodelPost = new JodelPost();
         try {
-            JSONObject responsePostJson = (JSONObject) parserJodels.parse(jodelJSON);
+            JsonObject responsePostJson = JsonParser.parseString(jodelJSON).getAsJsonObject();
 
-            jodelPost.message = (String) responsePostJson.get("message");
-            jodelPost.createdAt = (String) responsePostJson.get("created_at");
-            jodelPost.updatedAt = (String) responsePostJson.get("updated_at");
-            jodelPost.pinCount = (long) responsePostJson.get("pin_count");
-            jodelPost.color = (String) responsePostJson.get("color");
-            jodelPost.gotThanks = (boolean) responsePostJson.get("got_thanks");
-            jodelPost.thanksCount = (long) responsePostJson.get("thanks_count");
+            jodelPost.message = responsePostJson.get("message").getAsString();
+            jodelPost.createdAt = responsePostJson.get("created_at").getAsString();
+            jodelPost.updatedAt = responsePostJson.get("updated_at").getAsString();
+            jodelPost.pinCount = responsePostJson.get("pin_count").getAsLong();
+            jodelPost.color = responsePostJson.get("color").getAsString();
+            jodelPost.gotThanks = responsePostJson.get("got_thanks").getAsBoolean();
+            jodelPost.thanksCount = responsePostJson.get("thanks_count").getAsLong();
             try {
-                jodelPost.imageApproved = (boolean) responsePostJson.get("image_approved");
-                jodelPost.imageURL = (String) responsePostJson.get("image_url");
-                jodelPost.thumbnailURL = (String) responsePostJson.get("thumbnail_url");
-            } catch (Exception e) {
+                jodelPost.imageApproved = responsePostJson.get("image_approved").getAsBoolean();
+                jodelPost.imageURL = responsePostJson.get("image_url").getAsString();
+                jodelPost.thumbnailURL = responsePostJson.get("thumbnail_url").getAsString();
+            } catch (Exception ignored) {
             }
             try {
-                jodelPost.fromHome = (boolean) responsePostJson.get("from_home");
-            } catch (Exception e) {
+                jodelPost.fromHome = responsePostJson.get("from_home").getAsBoolean();
+            } catch (Exception ignored) {
             }
             try {
-                jodelPost.childCount = (long) responsePostJson.get("child_count");
-            } catch (Exception e) {
+                jodelPost.childCount = responsePostJson.get("child_count").getAsLong();
+            } catch (Exception ignored) {
             }
-            jodelPost.replier = (long) responsePostJson.get("replier");
-            jodelPost.postID = (String) responsePostJson.get("post_id");
-            jodelPost.discoveredBy = (long) responsePostJson.get("discovered_by");
-            jodelPost.voteCount = (long) responsePostJson.get("vote_count");
-            jodelPost.shareCount = (long) responsePostJson.get("share_count");
-            jodelPost.userHandle = (String) responsePostJson.get("user_handle");
-            jodelPost.postOwn = (String) responsePostJson.get("post_own");
-            jodelPost.distance = (long) responsePostJson.get("distance");
+            jodelPost.replier = responsePostJson.get("replier").getAsLong();
+            jodelPost.postID = responsePostJson.get("post_id").getAsString();
+            jodelPost.discoveredBy = responsePostJson.get("discovered_by").getAsLong();
+            jodelPost.voteCount = responsePostJson.get("vote_count").getAsLong();
+            jodelPost.shareCount = responsePostJson.get("share_count").getAsLong();
+            jodelPost.userHandle = responsePostJson.get("user_handle").getAsString();
+            jodelPost.postOwn = responsePostJson.get("post_own").getAsString();
+            jodelPost.distance = responsePostJson.get("distance").getAsLong();
 
-            JSONArray jodelsRepliesArray = (JSONArray) responsePostJson.get("children");
+            JsonArray jodelsRepliesArray = responsePostJson.getAsJsonArray("children");
 
-            Iterator i = jodelsRepliesArray.iterator();
-
-            while (i.hasNext()) {
-                JSONObject jodelReply = (JSONObject) i.next();
+            for (JsonElement jsonElement : jodelsRepliesArray) {
+                JsonObject jodelReply = jsonElement.getAsJsonObject();
                 JodelPostReply jodelPostReply = new JodelPostReply();
-                jodelPostReply.message = (String) jodelReply.get("message");
-                jodelPostReply.createdAt = (String) jodelReply.get("created_at");
-                jodelPostReply.updatedAt = (String) jodelReply.get("updated_at");
-                jodelPostReply.color = (String) jodelReply.get("color");
-                jodelPostReply.thanksCount = (long) jodelReply.get("thanks_count");
-                jodelPostReply.postID = (String) jodelReply.get("post_id");
+                jodelPostReply.message = jodelReply.get("message").getAsString();
+                jodelPostReply.createdAt = jodelReply.get("created_at").getAsString();
+                jodelPostReply.updatedAt = jodelReply.get("updated_at").getAsString();
+                jodelPostReply.color = jodelReply.get("color").getAsString();
+                jodelPostReply.thanksCount = jodelReply.get("thanks_count").getAsLong();
+                jodelPostReply.postID = jodelReply.get("post_id").getAsString();
                 try {
-                    jodelPostReply.imageApproved = (boolean) jodelReply.get("image_approved");
-                    jodelPostReply.imageURL = (String) jodelReply.get("image_url");
-                    jodelPostReply.thumbnailURL = (String) jodelReply.get("thumbnail_url");
-                } catch (Exception e) {
+                    jodelPostReply.imageApproved = jodelReply.get("image_approved").getAsBoolean();
+                    jodelPostReply.imageURL = jodelReply.get("image_url").getAsString();
+                    jodelPostReply.thumbnailURL = jodelReply.get("thumbnail_url").getAsString();
+                } catch (Exception ignored) {
                 }
-                jodelPostReply.discoveredBy = (long) jodelReply.get("discovered_by");
-                jodelPostReply.voteCount = (long) jodelReply.get("vote_count");
-                jodelPostReply.userHandle = (String) jodelReply.get("user_handle");
-                jodelPostReply.postOwn = (String) jodelReply.get("post_own");
-                jodelPostReply.distance = (long) jodelReply.get("distance");
+                jodelPostReply.discoveredBy = jodelReply.get("discovered_by").getAsLong();
+                jodelPostReply.voteCount = jodelReply.get("vote_count").getAsLong();
+                jodelPostReply.userHandle = jodelReply.get("user_handle").getAsString();
+                jodelPostReply.postOwn = jodelReply.get("post_own").getAsString();
+                jodelPostReply.distance = jodelReply.get("distance").getAsLong();
                 jodelPost.replies.add(jodelPostReply);
             }
 
-        } catch (ParseException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return jodelPost;
@@ -141,81 +136,79 @@ public class JodelParser {
 
     /**
      * Parses a single Jodel (with replies) in V3 of API
+     *
      * @param jodelJSON String containing a JSON with a single jodel (from rawResponse)
      * @return An object of type JodelPost containing parsed Jodel with replies
      */
     public static JodelPost getParsedJodelV3(String jodelJSON) {
-        JSONParser parserJodels = new JSONParser();
         JodelPost jodelPost = new JodelPost();
         try {
-            JSONObject responsePostJson = (JSONObject) parserJodels.parse(jodelJSON);
-            JSONObject postContentJson = (JSONObject) responsePostJson.get("details");
+            JsonObject responsePostJson = JsonParser.parseString(jodelJSON).getAsJsonObject();
+            JsonObject postContentJson = responsePostJson.getAsJsonObject("details");
 
-            jodelPost.message = (String) postContentJson.get("message");
-            jodelPost.createdAt = (String) postContentJson.get("created_at");
-            jodelPost.updatedAt = (String) postContentJson.get("updated_at");
-            jodelPost.pinCount = (long) postContentJson.get("pin_count");
-            jodelPost.color = (String) postContentJson.get("color");
-            jodelPost.gotThanks = (boolean) postContentJson.get("got_thanks");
+            jodelPost.message = postContentJson.get("message").getAsString();
+            jodelPost.createdAt = postContentJson.get("created_at").getAsString();
+            jodelPost.updatedAt = postContentJson.get("updated_at").getAsString();
+            jodelPost.pinCount = postContentJson.get("pin_count").getAsLong();
+            jodelPost.color = postContentJson.get("color").getAsString();
+            jodelPost.gotThanks = postContentJson.get("got_thanks").getAsBoolean();
             try {
-                jodelPost.imageApproved = (boolean) postContentJson.get("image_approved");
-                jodelPost.imageURL = (String) postContentJson.get("image_url");
-                jodelPost.thumbnailURL = (String) postContentJson.get("thumbnail_url");
-            } catch (Exception e) {
+                jodelPost.imageApproved = postContentJson.get("image_approved").getAsBoolean();
+                jodelPost.imageURL = postContentJson.get("image_url").getAsString();
+                jodelPost.thumbnailURL = postContentJson.get("thumbnail_url").getAsString();
+            } catch (Exception ignored) {
             }
             try {
-                jodelPost.fromHome = (boolean) postContentJson.get("from_home");
-            } catch (Exception e) {
+                jodelPost.fromHome = postContentJson.get("from_home").getAsBoolean();
+            } catch (Exception ignored) {
             }
             try {
-                jodelPost.childCount = (long) postContentJson.get("child_count");
-            } catch (Exception e) {
+                jodelPost.childCount = postContentJson.get("child_count").getAsLong();
+            } catch (Exception ignored) {
             }
-            jodelPost.replier = (long) postContentJson.get("replier");
-            jodelPost.postID = (String) postContentJson.get("post_id");
-            jodelPost.discoveredBy = (long) postContentJson.get("discovered_by");
-            jodelPost.voteCount = (long) postContentJson.get("vote_count");
-            jodelPost.shareCount = (long) postContentJson.get("share_count");
-            jodelPost.userHandle = (String) postContentJson.get("user_handle");
-            jodelPost.postOwn = (String) postContentJson.get("post_own");
-            jodelPost.distance = (long) postContentJson.get("distance");
+            jodelPost.replier = postContentJson.get("replier").getAsLong();
+            jodelPost.postID = postContentJson.get("post_id").getAsString();
+            jodelPost.discoveredBy = postContentJson.get("discovered_by").getAsLong();
+            jodelPost.voteCount = postContentJson.get("vote_count").getAsLong();
+            jodelPost.shareCount = postContentJson.get("share_count").getAsLong();
+            jodelPost.userHandle = postContentJson.get("user_handle").getAsString();
+            jodelPost.postOwn = postContentJson.get("post_own").getAsString();
+            jodelPost.distance = postContentJson.get("distance").getAsLong();
 
-            JSONArray jodelsRepliesArray = (JSONArray) responsePostJson.get("replies");
+            JsonArray jodelsRepliesArray = responsePostJson.getAsJsonArray("replies");
 
-            Iterator i = jodelsRepliesArray.iterator();
-
-            while (i.hasNext()) {
-                JSONObject jodelReply = (JSONObject) i.next();
+            for (JsonElement jsonElement : jodelsRepliesArray) {
+                JsonObject jodelReply = jsonElement.getAsJsonObject();
                 JodelPostReply jodelPostReply = new JodelPostReply();
-                jodelPostReply.message = (String) jodelReply.get("message");
-                jodelPostReply.createdAt = (String) jodelReply.get("created_at");
-                jodelPostReply.updatedAt = (String) jodelReply.get("updated_at");
-                jodelPostReply.pinCount = (long) jodelReply.get("pin_count");
-                jodelPostReply.color = (String) jodelReply.get("color");
-                jodelPostReply.gotThanks = (boolean) jodelReply.get("got_thanks");
-                jodelPostReply.thanksCount = (long) jodelReply.get("thanks_count");
-                jodelPostReply.childCount = (long) jodelReply.get("child_count");
-                jodelPostReply.replier = (long) jodelReply.get("replier");
-                jodelPostReply.postID = (String) jodelReply.get("post_id");
+                jodelPostReply.message = jodelReply.get("message").getAsString();
+                jodelPostReply.createdAt = jodelReply.get("created_at").getAsString();
+                jodelPostReply.updatedAt = jodelReply.get("updated_at").getAsString();
+                jodelPostReply.pinCount = jodelReply.get("pin_count").getAsLong();
+                jodelPostReply.color = jodelReply.get("color").getAsString();
+                jodelPostReply.gotThanks = jodelReply.get("got_thanks").getAsBoolean();
+                jodelPostReply.thanksCount = jodelReply.get("thanks_count").getAsLong();
+                jodelPostReply.childCount = jodelReply.get("child_count").getAsLong();
+                jodelPostReply.replier = jodelReply.get("replier").getAsLong();
+                jodelPostReply.postID = jodelReply.get("post_id").getAsString();
                 try {
-                    jodelPostReply.imageApproved = (boolean) jodelReply.get("image_approved");
-                    jodelPostReply.imageURL = (String) jodelReply.get("image_url");
-                    jodelPostReply.thumbnailURL = (String) jodelReply.get("thumbnail_url");
-                } catch (Exception e) {
+                    jodelPostReply.imageApproved = jodelReply.get("image_approved").getAsBoolean();
+                    jodelPostReply.imageURL = jodelReply.get("image_url").getAsString();
+                    jodelPostReply.thumbnailURL = jodelReply.get("thumbnail_url").getAsString();
+                } catch (Exception ignored) {
                 }
                 try {
-                    jodelPostReply.fromHome = (boolean) jodelReply.get("from_home");
-                } catch (Exception e) {
+                    jodelPostReply.fromHome = jodelReply.get("from_home").getAsBoolean();
+                } catch (Exception ignored) {
                 }
-                jodelPostReply.discoveredBy = (long) jodelReply.get("discovered_by");
-                jodelPostReply.voteCount = (long) jodelReply.get("vote_count");
-                jodelPostReply.userHandle = (String) jodelReply.get("user_handle");
-                jodelPostReply.postOwn = (String) jodelReply.get("post_own");
-                jodelPostReply.distance = (long) jodelReply.get("distance");
+                jodelPostReply.discoveredBy = jodelReply.get("discovered_by").getAsLong();
+                jodelPostReply.voteCount = jodelReply.get("vote_count").getAsLong();
+                jodelPostReply.userHandle = jodelReply.get("user_handle").getAsString();
+                jodelPostReply.postOwn = jodelReply.get("post_own").getAsString();
+                jodelPostReply.distance = jodelReply.get("distance").getAsLong();
                 jodelPost.replies.add(jodelPostReply);
             }
 
-        } catch (ParseException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return jodelPost;
@@ -223,34 +216,33 @@ public class JodelParser {
 
     /**
      * Parses a list of Jodel-notifications
+     *
      * @param notificationsJSON String containing a JSON with notifications
      * @return A list of objects from type JodelNotification
      */
     public static List<JodelNotification> getParsedNotifications(String notificationsJSON) {
         List<JodelNotification> jodelNotifications = new ArrayList<JodelNotification>();
-        JSONParser parser = new JSONParser();
         try {
-            JSONObject responseJson = (JSONObject) parser.parse(notificationsJSON);
-            JSONArray jodelsNotificationsArray = (JSONArray) responseJson.get("notifications");
+            JsonObject responseJson = JsonParser.parseString(notificationsJSON).getAsJsonObject();
+            JsonArray jodelsNotificationsArray = responseJson.getAsJsonArray("notifications");
 
-            Iterator i = jodelsNotificationsArray.iterator();
-            while (i.hasNext()) {
-                JSONObject notification = (JSONObject) i.next();
+            for (JsonElement jsonElement : jodelsNotificationsArray) {
+                JsonObject notification = jsonElement.getAsJsonObject();
                 JodelNotification jodelNotification = new JodelNotification();
-                jodelNotification.postID = (String) notification.get("post_id");
-                jodelNotification.type = (String) notification.get("type");
-                jodelNotification.userID = (String) notification.get("user_id");
-                jodelNotification.message = (String) notification.get("message");
+                jodelNotification.postID = notification.get("post_id").getAsString();
+                jodelNotification.type = notification.get("type").getAsString();
+                jodelNotification.userID = notification.get("user_id").getAsString();
+                jodelNotification.message = notification.get("message").getAsString();
                 if (jodelNotification.type.equals("vote_post")) {
-                    jodelNotification.voteCount = (long) notification.get("vote_count");
+                    jodelNotification.voteCount = notification.get("vote_count").getAsLong();
                 }
                 ;
-                jodelNotification.scroll = (String) notification.get("scroll");
-                jodelNotification.lastInteraction = (String) notification.get("last_interaction");
-                jodelNotification.read = (boolean) notification.get("read");
-                jodelNotification.seen = (boolean) notification.get("seen");
-                jodelNotification.color = (String) notification.get("color");
-                jodelNotification.notificationID = (String) notification.get("notification_id");
+                jodelNotification.scroll = notification.get("scroll").getAsString();
+                jodelNotification.lastInteraction = notification.get("last_interaction").getAsString();
+                jodelNotification.read = notification.get("read").getAsBoolean();
+                jodelNotification.seen = notification.get("seen").getAsBoolean();
+                jodelNotification.color = notification.get("color").getAsString();
+                jodelNotification.notificationID = notification.get("notification_id").getAsString();
 
                 jodelNotifications.add(jodelNotification);
             }

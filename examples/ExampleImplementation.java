@@ -1,12 +1,14 @@
 import com.fr31b3u73r.jodel.*;
 
+import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class ExampleImplementation {
     public static void main(String[] args) {
         // create a new Jodel account
-        JodelAccount ja = new JodelAccount("48.148434", "11.567867", "Munich", "DE", "Munich");
+        JodelAccount ja = new JodelAccount("48.148434", "11.567867", "Munich", Locale.GERMANY, "Munich", true, Proxy.NO_PROXY);
 
         // you can get your account data at any time as an object of type JodelAccountData
         // this information can be stored and used in the constructor of JodelAccount
@@ -32,7 +34,7 @@ public class ExampleImplementation {
         JodelRequestResponse createResponse = ja.createPost("Ich bin eine Münchner Ampel", null, JodelPostColor.RED, null);
 
         // to retrieve a list of Jodels use a function matching your criteria (see JodelAccount class)
-        JodelRequestResponse getPopularPictures = ja.getPicturesPopular(0, 10, null);
+        JodelRequestResponse getPopularPictures = ja.getPicturesPopular(0, false, null);
         // to get the data select the jodelPosts parameter of JodelRequestResponse which is a list of type JodelPost
         List<JodelPost> retrievedPosts = JodelParser.getParsedJodels(getPopularPictures.rawResponseMessage);
 

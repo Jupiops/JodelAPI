@@ -1,20 +1,22 @@
 package com.fr31b3u73r.jodel;
 
-import java.util.List;
-import java.util.Random;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import java.net.Proxy;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class JodelAccount {
 
-    JSONObject locationObject = new JSONObject();
+    JsonObject locationObject = new JsonObject();
 
     static final String API_URL = "https://api.go-tellm.com/api";
     static final String CLIENT_ID = "81e8a76e-1e02-4d17-9ba0-8a7020261b26";
-    static final String SECRET = "hyTBJcvtpDLSgGUWjybbYUNKSSoVvMcfdjtjiQvf";
-    static final String VERSION = "4.47.0";
+    static final String SECRET = "TNHfHCaBjTvtrjEFsAFQyrHapTHdKbJVcraxnTzd";
+    static final String VERSION = "5.16.1";
 
     String accessToken = null;
     String deviceUID = null;
@@ -23,47 +25,59 @@ public class JodelAccount {
     String refreshToken = null;
     String latitude = null;
     String longitude = null;
-    JodelHTTPAction httpAction;
+    double locationAccuracy = 0.0;
+    Locale country;
+    JodelHttpAction httpAction;
+    Proxy proxy;
 
     /**
      * Constructor for JodelAccount class
-     * @param lat Latitute of location
-     * @param lng Longitude of location
-     * @param city Name of the city
-     * @param country Countrycode (e.g. DE for Germany)
-     * @param name Name of the location (normally the same as city)
-     * @param updateLocation Boolean to update a location for existing account
-     * @param accessToken Access token of account
-     * @param deviceUID Device ID of account
-     * @param refreshToken Refresh token of account
-     * @param distinctID Distinct ID of account
-     * @param expirationDate Timestamp of expiration date
+     *
+     * @param lat               Latitute of location
+     * @param lng               Longitude of location
+     * @param city              Name of the city
+     * @param country           Countrycode (e.g. DE for Germany)
+     * @param name              Name of the location (normally the same as city)
+     * @param updateLocation    Boolean to update a location for existing account
+     * @param randomizeLocation Boolean to randomize the Location
+     * @param accessToken       Access token of account
+     * @param deviceUID         Device ID of account
+     * @param refreshToken      Refresh token of account
+     * @param distinctID        Distinct ID of account
+     * @param expirationDate    Timestamp of expiration date
+     * @param proxy             Proxy for connections to the jodel servers
      */
-    public JodelAccount(String lat, String lng, String city, String country, String name, Boolean updateLocation,
-                        String accessToken, String deviceUID, String refreshToken, String distinctID, String expirationDate) {
+    public JodelAccount(String lat, String lng, String city, Locale country, String name, Boolean updateLocation, Boolean randomizeLocation,
+                        String accessToken, String deviceUID, String refreshToken, String distinctID, String expirationDate, Proxy proxy) {
 
-        this.httpAction = new JodelHTTPAction();
+        this.httpAction = new JodelHttpAction();
+        this.proxy = proxy;
 
-        this.latitude = lat;
-        this.longitude = lng;
+        this.latitude = randomizeLocation ? JodelHelper.randomizeGeography(lat) : lat;
+        this.longitude = randomizeLocation ? JodelHelper.randomizeGeography(lng) : lng;
+        this.locationAccuracy = randomizeLocation ? (Math.round(ThreadLocalRandom.current().nextDouble(16) * 1000d) / 1000d) : this.locationAccuracy;
+        this.country = country;
 
-        this.locationObject.put("city", city);
-        this.locationObject.put("loc_accuracy", 0.0);
-        this.locationObject.put("country", country);
-        this.locationObject.put("name", name);
-        JSONObject locationCoordinates = new JSONObject();
-        locationCoordinates.put("lat", Float.parseFloat(lat));
-        locationCoordinates.put("lng", Float.parseFloat(lng));
-        this.locationObject.put("loc_coordinates", locationCoordinates);
+        this.locationObject.addProperty("city", city);
+        this.locationObject.addProperty("loc_accuracy", this.locationAccuracy);
+        this.locationObject.addProperty("country", this.country.getCountry());
+//        this.locationObject.put("name", name);
+        JsonObject locationCoordinates = new JsonObject();
+        locationCoordinates.addProperty("lat", this.latitude);
+        locationCoordinates.addProperty("lng", this.longitude);
+        this.locationObject.add("loc_coordinates", locationCoordinates);
 
-        if (accessToken != null && deviceUID != null && refreshToken != null && distinctID != null && expirationDate != null) {
+        this.deviceUID = deviceUID;
+
+        if (accessToken != null && refreshToken != null && distinctID != null && expirationDate != null) {
             this.expirationDate = expirationDate;
             this.distinctID = distinctID;
             this.refreshToken = refreshToken;
-            this.deviceUID = deviceUID;
+
+
             this.accessToken = accessToken;
 
-            if (updateLocation == true) {
+            if (updateLocation) {
                 this.updateHTTPParameter();
                 this.httpAction.setLocation();
             }
@@ -76,33 +90,38 @@ public class JodelAccount {
     /**
      * Overloads constructor using JodelAccountData object instead of single values for account data
      *
-     * @param lat            Latitute of location
-     * @param lng            Longitude of location
-     * @param city           Name of the city
-     * @param country        Countrycode (e.g. DE for Germany)
-     * @param name           Name of the location (normally the same as city)
-     * @param updateLocation Boolean to update a location for existing account
-     * @param accountData    Object of type JodelAccountData containing all necessary account data
+     * @param lat               Latitute of location
+     * @param lng               Longitude of location
+     * @param city              Name of the city
+     * @param country           Countrycode (e.g. DE for Germany)
+     * @param name              Name of the location (normally the same as city)
+     * @param updateLocation    Boolean to update a location for existing account
+     * @param randomizeLocation Boolean to randomize the Location
+     * @param accountData       Object of type JodelAccountData containing all necessary account data
+     * @param proxy             Proxy for connections to the jodel servers
      */
-    public JodelAccount(String lat, String lng, String city, String country, String name, Boolean updateLocation, JodelAccountData accountData) {
-        this(lat, lng, city, country, name, updateLocation, accountData.accessToken, accountData.deviceUID, accountData.refreshToken, accountData.distinctID, accountData.expirationDate);
+    public JodelAccount(String lat, String lng, String city, Locale country, String name, Boolean updateLocation, Boolean randomizeLocation, JodelAccountData accountData, Proxy proxy) {
+        this(lat, lng, city, country, name, updateLocation, randomizeLocation, accountData.accessToken, accountData.deviceUID, accountData.refreshToken, accountData.distinctID, accountData.expirationDate, proxy);
     }
 
     /**
      * Overloads constructor to simplify creating a new account
      *
-     * @param lat     Latitute of location
-     * @param lng     Longitude of location
-     * @param city    Name of the city
-     * @param country Countrycode (e.g. DE for Germany)
-     * @param name    Name of the location (normally the same as city)
+     * @param lat               Latitute of location
+     * @param lng               Longitude of location
+     * @param city              Name of the city
+     * @param country           Countrycode (e.g. DE for Germany)
+     * @param name              Name of the location (normally the same as city)
+     * @param randomizeLocation Boolean to randomize the Location
+     * @param proxy             Proxy for connections to the jodel servers
      */
-    public JodelAccount(String lat, String lng, String city, String country, String name) {
-        this(lat, lng, city, country, name, false, null, null, null, null, null);
+    public JodelAccount(String lat, String lng, String city, Locale country, String name, Boolean randomizeLocation, Proxy proxy) {
+        this(lat, lng, city, country, name, false, randomizeLocation, null, null, null, null, null, proxy);
     }
 
     /**
      * Returns current account data as object of type JodelAccountData
+     *
      * @return Account data
      */
     public JodelAccountData getAccountData() {
@@ -132,21 +151,19 @@ public class JodelAccount {
         }
 
         this.updateHTTPParameter();
-        JodelHTTPResponse requestResponse = this.httpAction.getNewTokens();
+        JodelHttpResponse requestResponse = this.httpAction.getNewTokens();
 
-        if (requestResponse.responseCode == 200) {
-            String responseMessage = requestResponse.responseMessage;
-            JSONParser parser = new JSONParser();
-            try {
-                JSONObject responseJson = (JSONObject) parser.parse(responseMessage);
-                this.accessToken = responseJson.get("access_token").toString();
-                this.expirationDate = responseJson.get("expiration_date").toString();
-                this.refreshToken = responseJson.get("refresh_token").toString();
-                this.distinctID = responseJson.get("distinct_id").toString();
-            } catch (ParseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+        if (requestResponse.getStatusCode() == 200) {
+            String responseMessage = requestResponse.toString();
+
+            JsonObject responseJson = JsonParser.parseString(responseMessage).getAsJsonObject();
+            this.accessToken = responseJson.get("access_token").getAsString();
+            this.expirationDate = responseJson.get("expiration_date").getAsString();
+            this.refreshToken = responseJson.get("refresh_token").getAsString();
+            this.distinctID = responseJson.get("distinct_id").getAsString();
+        } else {
+            System.err.println("getNewTokens faild! HTTP Status Code: " + requestResponse.getStatusCode()
+                    + " for Device UID: " + this.deviceUID + "\n" + requestResponse.toString());
         }
     }
 
@@ -155,52 +172,90 @@ public class JodelAccount {
      */
     public void refreshAccessToken() {
         this.updateHTTPParameter();
-        JodelHTTPResponse requestResponse = this.httpAction.getNewAccessToken();
-        if (requestResponse.responseCode == 200) {
-            String responseMessage = requestResponse.responseMessage;
-            JSONParser parser = new JSONParser();
-            try {
-                JSONObject responseJson = (JSONObject) parser.parse(responseMessage);
-                this.accessToken = responseJson.get("access_token").toString();
-                this.expirationDate = responseJson.get("expiration_date").toString();
-            } catch (ParseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
+        JodelHttpResponse requestResponse = this.httpAction.getNewAccessToken();
+        if (requestResponse.getStatusCode() == 200) {
+            JsonObject responseJson = JsonParser.parseString(requestResponse.toString()).getAsJsonObject();
+            this.accessToken = responseJson.get("access_token").toString();
+            this.expirationDate = responseJson.get("expiration_date").toString();
         }
+    }
+
+
+    public JodelRequestResponse sendPushToken(String pushToken) {
+        JodelRequestResponse requestResponse = new JodelRequestResponse();
+        this.updateHTTPParameter();
+        JodelHttpResponse requestUserResponse = this.httpAction.getUserConfig();
+
+        if (requestUserResponse.getStatusCode() == 200) {
+            String responseUserMessage = requestUserResponse.toString();
+            try {
+                JsonObject responseJson = JsonParser.parseString(responseUserMessage).getAsJsonObject();
+                boolean verrifiedStatus = responseJson.get("verified").getAsBoolean();
+                if (!verrifiedStatus) {
+                    System.out.println("Not verified jet!");
+                    this.updateHTTPParameter();
+                    JodelHttpResponse requestPushTokenResponse = this.httpAction.sendPushToken(pushToken);
+                    requestResponse.httpResponseCode = requestPushTokenResponse.getStatusCode();
+                    if (requestPushTokenResponse.getStatusCode() == 200) {
+                        requestResponse.rawResponseMessage = requestPushTokenResponse.toString();
+                    }
+                }
+            } catch (Exception e) {
+                requestResponse.rawErrorMessage = e.getMessage();
+                e.printStackTrace();
+                requestResponse.error = true;
+                requestResponse.errorMessage = "Could not parse response JSON!";
+            }
+        } else {
+            requestResponse.error = true;
+            requestResponse.rawErrorMessage = requestUserResponse.toString();
+            requestResponse.errorMessage = "Response Code = " + requestUserResponse.getStatusCode();
+        }
+        return requestResponse;
+    }
+
+    public JodelRequestResponse verifyPush(String verificationCode, long serverTime) {
+        JodelRequestResponse requestResponse = new JodelRequestResponse();
+        this.updateHTTPParameter();
+        JodelHttpResponse submitCaptchaVerification = this.httpAction.verifyPush(verificationCode, serverTime);
+        requestResponse.httpResponseCode = submitCaptchaVerification.getStatusCode();
+        if (submitCaptchaVerification.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = submitCaptchaVerification.toString();
+        } else {
+            requestResponse.error = true;
+        }
+        return requestResponse;
     }
 
     /**
      * Gets the captcha image url and key for not verified users
+     *
      * @return Object of type JodelRequestResponse containing captcha URL and key in responseValues attribute
      */
     public JodelRequestResponse getCaptchaData() {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
 
         this.updateHTTPParameter();
-        JodelHTTPResponse requestUserResponse = this.httpAction.getUserConfig();
-        if (requestUserResponse.responseCode == 200) {
-            String responseUserMessage = requestUserResponse.responseMessage;
-            JSONParser parser = new JSONParser();
+        JodelHttpResponse requestUserResponse = this.httpAction.getUserConfig();
+        if (requestUserResponse.getStatusCode() == 200) {
+            String responseUserMessage = requestUserResponse.toString();
             try {
-                JSONObject responseJson = (JSONObject) parser.parse(responseUserMessage);
-                boolean verrifiedStatus = (Boolean) responseJson.get("verified");
-                if (verrifiedStatus == false) {
+                JsonObject responseJson = JsonParser.parseString(responseUserMessage).getAsJsonObject();
+                if (!responseJson.get("verified").getAsBoolean()) {
                     this.updateHTTPParameter();
-                    JodelHTTPResponse requestCaptchaResponse = this.httpAction.getCaptcha();
-                    requestResponse.httpResponseCode = requestCaptchaResponse.responseCode;
-                    if (requestCaptchaResponse.responseCode == 200) {
-                        String responseCaptchaMessage = requestCaptchaResponse.responseMessage;
+                    JodelHttpResponse requestCaptchaResponse = this.httpAction.getCaptcha();
+                    requestResponse.httpResponseCode = requestCaptchaResponse.getStatusCode();
+                    if (requestCaptchaResponse.getStatusCode() == 200) {
+                        String responseCaptchaMessage = requestCaptchaResponse.toString();
                         requestResponse.rawResponseMessage = responseCaptchaMessage;
-                        JSONParser parserCaptcha = new JSONParser();
                         try {
-                            JSONObject responseCaptchaJson = (JSONObject) parserCaptcha.parse(responseCaptchaMessage);
-                            String captchaUrl = responseCaptchaJson.get("image_url").toString();
-                            String captchaKey = responseCaptchaJson.get("key").toString();
+                            JsonObject responseCaptchaJson = JsonParser.parseString(responseCaptchaMessage).getAsJsonObject();
+                            String captchaUrl = responseCaptchaJson.get("image_url").getAsString();
+                            String captchaKey = responseCaptchaJson.get("key").getAsString();
                             requestResponse.responseValues.put("captchaUrl", captchaUrl);
                             requestResponse.responseValues.put("captchaKey", captchaKey);
 
-                        } catch (ParseException e) {
+                        } catch (Exception e) {
                             requestResponse.rawErrorMessage = e.getMessage();
                             e.printStackTrace();
                             requestResponse.error = true;
@@ -208,7 +263,7 @@ public class JodelAccount {
                         }
                     }
                 }
-            } catch (ParseException e) {
+            } catch (Exception e) {
                 requestResponse.rawErrorMessage = e.getMessage();
                 e.printStackTrace();
                 requestResponse.error = true;
@@ -222,18 +277,18 @@ public class JodelAccount {
 
     /**
      * Solves the captcha so that a user can verify his account
-     * @param key Key of captcha
+     *
+     * @param key       Key of captcha
      * @param positions List of positions with racoon (starting with 0 from left to right)
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse verifyCaptcha(String key, List<Integer> positions) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse submitCaptchaVerification = this.httpAction.submitCaptcha(key, positions);
-        requestResponse.httpResponseCode = submitCaptchaVerification.responseCode;
-        if (submitCaptchaVerification.responseCode == 200) {
-            String responseCaptchaMessage = submitCaptchaVerification.responseMessage;
-            requestResponse.rawResponseMessage = responseCaptchaMessage;
+        JodelHttpResponse submitCaptchaVerification = this.httpAction.submitCaptcha(key, positions);
+        requestResponse.httpResponseCode = submitCaptchaVerification.getStatusCode();
+        if (submitCaptchaVerification.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = submitCaptchaVerification.toString();
         } else {
             requestResponse.error = true;
         }
@@ -242,11 +297,12 @@ public class JodelAccount {
 
     /**
      * Creates a new Jodel
-     * @param message Text message for new Jodel
+     *
+     * @param message     Text message for new Jodel
      * @param base64Image Base64 encoded image
-     * @param color Color of the Jodel
-     * @param channel Channel to post Jodel to
-     * @param ancestor For replies specify an ancestor
+     * @param color       Color of the Jodel
+     * @param channel     Channel to post Jodel to
+     * @param ancestor    For replies specify an ancestor
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse createPost(String message, String base64Image, String color, String channel, int ancestor) {
@@ -257,11 +313,10 @@ public class JodelAccount {
             return requestResponse;
         }
         this.updateHTTPParameter();
-        JodelHTTPResponse submitPost = this.httpAction.submitPost(message, base64Image, color, ancestor, channel);
-        requestResponse.httpResponseCode = submitPost.responseCode;
-        if (submitPost.responseCode == 200) {
-            String responseCaptchaMessage = submitPost.responseMessage;
-            requestResponse.rawResponseMessage = responseCaptchaMessage;
+        JodelHttpResponse submitPost = this.httpAction.submitPost(message, base64Image, color, ancestor, channel);
+        requestResponse.httpResponseCode = submitPost.getStatusCode();
+        if (submitPost.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = submitPost.toString();
         } else {
             requestResponse.error = true;
         }
@@ -270,10 +325,11 @@ public class JodelAccount {
 
     /**
      * Creates a new Jodel with no ancestor (i.e. no reply)
-     * @param message Text message for new Jodel
+     *
+     * @param message     Text message for new Jodel
      * @param base64Image Base64 encoded image
-     * @param color Color of the Jodel
-     * @param channel Channel to post Jodel to
+     * @param color       Color of the Jodel
+     * @param channel     Channel to post Jodel to
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse createPost(String message, String base64Image, String color, String channel) {
@@ -282,24 +338,26 @@ public class JodelAccount {
 
     /**
      * Gets Jodels matching given criteria
+     *
      * @param postTypes Types of Jodels to return (e.g. popular, discussed etc.)
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
-     * @param after Return only Jodels after a certain post
-     * @param mine Boolean to set output to only own Jodels
-     * @param hashtag Hashtag to filter Jodels
-     * @param channel Channel to filter Jodels
-     * @param pictures Boolean for selecting pictures
+     * @param page      Pagination
+     * @param distance
+     * @param after     Return only Jodels after a certain post
+     * @param mine      Boolean to set output to only own Jodels
+     * @param hashtag   Hashtag to filter Jodels
+     * @param channel   Channel to filter Jodels
+     * @param pictures  Boolean for selecting pictures
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getPosts(String postTypes, int skip, int limit, String after, boolean mine, String hashtag, String channel, boolean pictures) {
+    public JodelRequestResponse getPosts(String postTypes, int page, String distance, String after, boolean mine, boolean home, String hashtag, String channel, boolean pictures) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
 
         String category = "location";
         String apiVersion = "v2";
         String picturesPosts = "posts";
-        if (mine == true) {
+        if (mine) {
             category = "mine";
+            postTypes = "combo";
         } else if (hashtag != null) {
             category = "hashtag";
             apiVersion = "v3";
@@ -307,7 +365,7 @@ public class JodelAccount {
             category = "channel";
             apiVersion = "v3";
         }
-        if (pictures == true) {
+        if (pictures) {
             apiVersion = "v3";
             picturesPosts = "pictures";
         }
@@ -317,11 +375,10 @@ public class JodelAccount {
         String url = "/" + apiVersion + "/" + picturesPosts + "/" + category + "/" + postTypes;
 
         this.updateHTTPParameter();
-        JodelHTTPResponse getJodels = this.httpAction.getJodels(url, skip, limit, after, hashtag, channel);
-        requestResponse.httpResponseCode = getJodels.responseCode;
-        if (getJodels.responseCode == 200) {
-            String responseJodelsMessage = getJodels.responseMessage;
-            requestResponse.rawResponseMessage = responseJodelsMessage;
+        JodelHttpResponse getJodels = this.httpAction.getJodels(url, page, distance, after, hashtag, channel, home, false);
+        requestResponse.httpResponseCode = getJodels.getStatusCode();
+        if (getJodels.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = getJodels.toString();
         } else {
             requestResponse.error = true;
         }
@@ -330,126 +387,125 @@ public class JodelAccount {
 
     /**
      * Gets recent Jodels matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
-     * @param after Return only Jodels after a certain post
-     * @param mine Boolean to set output to only own Jodels
+     *
+     * @param page    Pagination
+     * @param after   Return only Jodels after a certain post
+     * @param mine    Boolean to set output to only own Jodels
      * @param hashtag Hashtag to filter Jodels
      * @param channel Channel to filter Jodels
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getPostsRecent(int skip, int limit, String after, boolean mine, String hashtag, String channel) {
-        return this.getPosts("", skip, limit, after, mine, hashtag, channel, false);
+    public JodelRequestResponse getPostsRecent(int page, String after, boolean mine, boolean home, String hashtag, String channel) {
+        return this.getPosts("", page, null, after, mine, home, hashtag, channel, false);
     }
 
     /**
      * Gets popular Jodels matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
-     * @param after Return only Jodels after a certain post
-     * @param mine Boolean to set output to only own Jodels
+     *
+     * @param page    Pagination
+     * @param after   Return only Jodels after a certain post
+     * @param mine    Boolean to set output to only own Jodels
      * @param hashtag Hashtag to filter Jodels
      * @param channel Channel to filter Jodels
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getPostsPopular(int skip, int limit, String after, boolean mine, String hashtag, String channel) {
-        return this.getPosts("popular", skip, limit, after, mine, hashtag, channel, false);
+    public JodelRequestResponse getPostsPopular(int page, String after, boolean mine, boolean home, String hashtag, String channel) {
+        return this.getPosts("popular", page, null, after, mine, home, hashtag, channel, false);
     }
 
     /**
      * Gets most discussed Jodels matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
-     * @param after Return only Jodels after a certain post
-     * @param mine Boolean to set output to only own Jodels
+     *
+     * @param page    Pagination
+     * @param after   Return only Jodels after a certain post
+     * @param mine    Boolean to set output to only own Jodels
      * @param hashtag Hashtag to filter Jodels
      * @param channel Channel to filter Jodels
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getPostsDiscussed(int skip, int limit, String after, boolean mine, String hashtag, String channel) {
-        return this.getPosts("discussed", skip, limit, after, mine, hashtag, channel, false);
+    public JodelRequestResponse getPostsDiscussed(int page, String after, boolean mine, boolean home, String hashtag, String channel) {
+        return this.getPosts("discussed", page, null, after, mine, home, hashtag, channel, false);
     }
 
     /**
      * Gets recent picture Jodels matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
+     *
+     * @param skip  Skip value
      * @param after Return only Jodels after a certain post
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getPicturesRecent(int skip, int limit, String after) {
-        return this.getPosts("", skip, limit, after, false, null, null, true);
+    public JodelRequestResponse getPicturesRecent(int skip, boolean home, String after) {
+        return this.getPosts("", skip, null, after, false, home, null, null, true);
     }
 
     /**
      * Gets popular picture Jodels matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
+     *
+     * @param skip  Skip value
      * @param after Return only Jodels after a certain post
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getPicturesPopular(int skip, int limit, String after) {
-        return this.getPosts("popular", skip, limit, after, false, null, null, true);
+    public JodelRequestResponse getPicturesPopular(int skip, boolean home, String after) {
+        return this.getPosts("popular", skip, null, after, false, home, null, null, true);
     }
 
     /**
      * Gets most discussed picture Jodels matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
+     *
+     * @param skip  Skip value
      * @param after Return only Jodels after a certain post
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getPicturesDiscussed(int skip, int limit, String after) {
-        return this.getPosts("discussed", skip, limit, after, false, null, null, true);
+    public JodelRequestResponse getPicturesDiscussed(int skip, boolean home, String after) {
+        return this.getPosts("discussed", skip, null, after, false, home, null, null, true);
     }
 
     /**
      * Gets your pinned Jodels matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
+     *
+     * @param skip  Skip value
      * @param after Return only Jodels after a certain post
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getMyPinnedPosts(int skip, int limit, String after) {
-        return this.getPosts("pinned", skip, limit, after, true, null, null, false);
+    public JodelRequestResponse getMyPinnedPosts(int skip, boolean home, String after) {
+        return this.getPosts("pinned", skip, null, after, true, home, null, null, false);
     }
 
     /**
      * Gets Jodels you replied to matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
+     *
+     * @param skip  Skip value
      * @param after Return only Jodels after a certain post
      * @return The requestResponse of type JodelRequestResponse
-     * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getMyRepliedPosts(int skip, int limit, String after) {
-        return this.getPosts("replies", skip, limit, after, true, null, null, false);
+    public JodelRequestResponse getMyRepliedPosts(int skip, boolean home, String after) {
+        return this.getPosts("replies", skip, null, after, true, home, null, null, false);
     }
 
     /**
      * Gets Jodels you voted to matching given criteria
-     * @param skip Skip value
-     * @param limit Limit returned Jodels to a certain number
+     *
+     * @param skip  Skip value
      * @param after Return only Jodels after a certain post
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse getMyVotedPosts(int skip, int limit, String after) {
-        return this.getPosts("votes", skip, limit, after, true, null, null, false);
+    public JodelRequestResponse getMyVotedPosts(int skip, boolean home, String after) {
+        return this.getPosts("votes", skip, null, after, true, home, null, null, false);
     }
 
     /**
      * Gets a single Jodel with all replies by post ID
+     *
      * @param postID ID of the post to retrieve details for
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getPostDetails(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse getJodel = this.httpAction.getJodel(postID);
-        requestResponse.httpResponseCode = getJodel.responseCode;
-        if (getJodel.responseCode == 200) {
-            String responseJodelsMessage = getJodel.responseMessage;
-            requestResponse.rawResponseMessage = responseJodelsMessage;
+        JodelHttpResponse getJodel = this.httpAction.getJodel(postID);
+        requestResponse.httpResponseCode = getJodel.getStatusCode();
+        if (getJodel.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = getJodel.toString();
         } else {
             requestResponse.error = true;
         }
@@ -458,18 +514,18 @@ public class JodelAccount {
 
     /**
      * Gets a single Jodel in new V3 of endpoint with all replies by post ID
+     *
      * @param postID ID of the post to retrieve details for
-     * @param skip Skip value
+     * @param skip   Skip value
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getPostDetailsV3(String postID, int skip) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse getJodel = this.httpAction.getJodelV3(postID, skip);
-        requestResponse.httpResponseCode = getJodel.responseCode;
-        if (getJodel.responseCode == 200) {
-            String responseJodelsMessage = getJodel.responseMessage;
-            requestResponse.rawResponseMessage = responseJodelsMessage;
+        JodelHttpResponse getJodel = this.httpAction.getJodelV3(postID, skip);
+        requestResponse.httpResponseCode = getJodel.getStatusCode();
+        if (getJodel.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = getJodel.toString();
         } else {
             requestResponse.error = true;
         }
@@ -478,17 +534,17 @@ public class JodelAccount {
 
     /**
      * Upvotes a post
+     *
      * @param postID ID of the post to vote
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse upvoteJodel(String postID) {
+    public JodelRequestResponse upvoteJodel(String postID, boolean home) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse performUpvote = this.httpAction.performUpvote(postID);
-        requestResponse.httpResponseCode = performUpvote.responseCode;
-        if (performUpvote.responseCode == 200) {
-            String responseJodelsMessage = performUpvote.responseMessage;
-            requestResponse.rawResponseMessage = responseJodelsMessage;
+        JodelHttpResponse performUpvote = this.httpAction.performUpvote(postID, home);
+        requestResponse.httpResponseCode = performUpvote.getStatusCode();
+        if (performUpvote.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = performUpvote.toString();
         } else {
             requestResponse.error = true;
         }
@@ -497,17 +553,17 @@ public class JodelAccount {
 
     /**
      * Downvotes a post
+     *
      * @param postID ID of the post to vote
      * @return The requestResponse of type JodelRequestResponse
      */
-    public JodelRequestResponse downvoteJodel(String postID) {
+    public JodelRequestResponse downvoteJodel(String postID, boolean home) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse performDownvote = this.httpAction.performDownvote(postID);
-        requestResponse.httpResponseCode = performDownvote.responseCode;
-        if (performDownvote.responseCode == 200) {
-            String responseJodelsMessage = performDownvote.responseMessage;
-            requestResponse.rawResponseMessage = responseJodelsMessage;
+        JodelHttpResponse performDownvote = this.httpAction.performDownvote(postID, home);
+        requestResponse.httpResponseCode = performDownvote.getStatusCode();
+        if (performDownvote.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = performDownvote.toString();
         } else {
             requestResponse.error = true;
         }
@@ -516,17 +572,17 @@ public class JodelAccount {
 
     /**
      * Thanks a post
+     *
      * @param postID ID of the post to thank
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse thankJodel(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse performThank = this.httpAction.performThank(postID);
-        requestResponse.httpResponseCode = performThank.responseCode;
-        if (performThank.responseCode == 200) {
-            String responseJodelsMessage = performThank.responseMessage;
-            requestResponse.rawResponseMessage = responseJodelsMessage;
+        JodelHttpResponse performThank = this.httpAction.performThank(postID);
+        requestResponse.httpResponseCode = performThank.getStatusCode();
+        if (performThank.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = performThank.toString();
         } else {
             requestResponse.error = true;
         }
@@ -535,21 +591,21 @@ public class JodelAccount {
 
     /**
      * Get share url
+     *
      * @param postID ID of the post to share
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getJodelShareLink(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse getShareLink = this.httpAction.getJodelShareURL(postID);
-        requestResponse.httpResponseCode = getShareLink.responseCode;
-        if (getShareLink.responseCode == 200) {
-            String responseJodelsMessage = getShareLink.responseMessage;
+        JodelHttpResponse getShareLink = this.httpAction.getJodelShareURL(postID);
+        requestResponse.httpResponseCode = getShareLink.getStatusCode();
+        if (getShareLink.getStatusCode() == 200) {
+            String responseJodelsMessage = getShareLink.toString();
             requestResponse.rawResponseMessage = responseJodelsMessage;
-            JSONParser parser = new JSONParser();
             try {
-                JSONObject responseJson = (JSONObject) parser.parse(responseJodelsMessage);
-                String url = (String) responseJson.get("url");
+                JsonObject responseJson = JsonParser.parseString(responseJodelsMessage).getAsJsonObject();
+                String url = responseJson.get("url").getAsString();
                 requestResponse.responseValues.put("shareLink", url);
             } catch (Exception e) {
                 requestResponse.rawErrorMessage = e.getMessage();
@@ -565,16 +621,17 @@ public class JodelAccount {
 
     /**
      * Pins a Jodel
+     *
      * @param postID ID of the post to pin
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse pinJodel(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse setPin = this.httpAction.setPin(postID);
-        requestResponse.httpResponseCode = setPin.responseCode;
-        if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = setPin.responseMessage;
+        JodelHttpResponse setPin = this.httpAction.setPin(postID);
+        requestResponse.httpResponseCode = setPin.getStatusCode();
+        if (setPin.getStatusCode() == 200) {
+            requestResponse.rawResponseMessage = setPin.toString();
         } else {
             requestResponse.error = true;
         }
@@ -583,16 +640,17 @@ public class JodelAccount {
 
     /**
      * Unpins a Jodel
+     *
      * @param postID ID of the post to unpin
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse unpinJodel(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse removePin = this.httpAction.removePin(postID);
-        requestResponse.httpResponseCode = removePin.responseCode;
+        JodelHttpResponse removePin = this.httpAction.removePin(postID);
+        requestResponse.httpResponseCode = removePin.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = removePin.responseMessage;
+            requestResponse.rawResponseMessage = removePin.toString();
         } else {
             requestResponse.error = true;
         }
@@ -601,16 +659,17 @@ public class JodelAccount {
 
     /**
      * Enable notifications of a Jodel
+     *
      * @param postID ID of the post to enable notification
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse enableNotification(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse notifyJodel = this.httpAction.enableNotify(postID);
-        requestResponse.httpResponseCode = notifyJodel.responseCode;
+        JodelHttpResponse notifyJodel = this.httpAction.enableNotify(postID);
+        requestResponse.httpResponseCode = notifyJodel.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = notifyJodel.responseMessage;
+            requestResponse.rawResponseMessage = notifyJodel.toString();
         } else {
             requestResponse.error = true;
         }
@@ -619,16 +678,17 @@ public class JodelAccount {
 
     /**
      * Disables notifications of a Jodel
+     *
      * @param postID ID of the post to disable notification
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse disableNotification(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse noNotifyJodel = this.httpAction.disableNotify(postID);
-        requestResponse.httpResponseCode = noNotifyJodel.responseCode;
+        JodelHttpResponse noNotifyJodel = this.httpAction.disableNotify(postID);
+        requestResponse.httpResponseCode = noNotifyJodel.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = noNotifyJodel.responseMessage;
+            requestResponse.rawResponseMessage = noNotifyJodel.toString();
         } else {
             requestResponse.error = true;
         }
@@ -637,16 +697,17 @@ public class JodelAccount {
 
     /**
      * Deletes a (own) Jodel
+     *
      * @param postID ID of the post to delete
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse deleteJodel(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse removeJodel = this.httpAction.removeJodel(postID);
-        requestResponse.httpResponseCode = removeJodel.responseCode;
+        JodelHttpResponse removeJodel = this.httpAction.removeJodel(postID);
+        requestResponse.httpResponseCode = removeJodel.getStatusCode();
         if (requestResponse.httpResponseCode == 204) {
-            requestResponse.rawResponseMessage = removeJodel.responseMessage;
+            requestResponse.rawResponseMessage = removeJodel.toString();
         } else {
             requestResponse.error = true;
         }
@@ -655,16 +716,17 @@ public class JodelAccount {
 
     /**
      * Upvotes a sticky Jodel
+     *
      * @param postID ID of the sticky post to upvote
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse upvoteStickyJodel(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse upvoteSticky = this.httpAction.performUpvoteSticky(postID);
-        requestResponse.httpResponseCode = upvoteSticky.responseCode;
+        JodelHttpResponse upvoteSticky = this.httpAction.performUpvoteSticky(postID);
+        requestResponse.httpResponseCode = upvoteSticky.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = upvoteSticky.responseMessage;
+            requestResponse.rawResponseMessage = upvoteSticky.toString();
         } else {
             requestResponse.error = true;
         }
@@ -673,16 +735,17 @@ public class JodelAccount {
 
     /**
      * Downvotes a sticky Jodel
+     *
      * @param postID ID of the sticky post to downvote
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse downvoteStickyJodel(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse downvoteSticky = this.httpAction.performDownvoteSticky(postID);
-        requestResponse.httpResponseCode = downvoteSticky.responseCode;
+        JodelHttpResponse downvoteSticky = this.httpAction.performDownvoteSticky(postID);
+        requestResponse.httpResponseCode = downvoteSticky.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = downvoteSticky.responseMessage;
+            requestResponse.rawResponseMessage = downvoteSticky.toString();
         } else {
             requestResponse.error = true;
         }
@@ -691,16 +754,17 @@ public class JodelAccount {
 
     /**
      * Dismisses a sticky Jodel
+     *
      * @param postID ID of the sticky post to dismiss
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse dismissStickyJodel(String postID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse dismissSticky = this.httpAction.performDismissSticky(postID);
-        requestResponse.httpResponseCode = dismissSticky.responseCode;
+        JodelHttpResponse dismissSticky = this.httpAction.performDismissSticky(postID);
+        requestResponse.httpResponseCode = dismissSticky.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = dismissSticky.responseMessage;
+            requestResponse.rawResponseMessage = dismissSticky.toString();
         } else {
             requestResponse.error = true;
         }
@@ -709,15 +773,16 @@ public class JodelAccount {
 
     /**
      * Gets Notifications for current account
+     *
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getNotifications() {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse getNotify = this.httpAction.getNotifications();
-        requestResponse.httpResponseCode = getNotify.responseCode;
+        JodelHttpResponse getNotify = this.httpAction.getNotifications();
+        requestResponse.httpResponseCode = getNotify.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = getNotify.responseMessage;
+            requestResponse.rawResponseMessage = getNotify.toString();
         } else {
             requestResponse.error = true;
         }
@@ -726,15 +791,16 @@ public class JodelAccount {
 
     /**
      * Gets new Notifications for current account
+     *
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getNotificationsNew() {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse getNotify = this.httpAction.getNotificationsNew();
-        requestResponse.httpResponseCode = getNotify.responseCode;
+        JodelHttpResponse getNotify = this.httpAction.getNotificationsNew();
+        requestResponse.httpResponseCode = getNotify.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = getNotify.responseMessage;
+            requestResponse.rawResponseMessage = getNotify.toString();
         } else {
             requestResponse.error = true;
         }
@@ -743,14 +809,15 @@ public class JodelAccount {
 
     /**
      * Sets a notification "read" by postID or notificationID
-     * @param postID ID of the post to set notification read
+     *
+     * @param postID         ID of the post to set notification read
      * @param notificationID ID of the notification to set read
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse setNotificationRead(String postID, String notificationID) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse setNotificationRead = null;
+        JodelHttpResponse setNotificationRead = null;
         if (postID != null) {
             setNotificationRead = this.httpAction.setNotificationReadPostID(postID);
         } else if (notificationID != null) {
@@ -758,7 +825,7 @@ public class JodelAccount {
         } else {
             requestResponse.error = true;
         }
-        requestResponse.httpResponseCode = setNotificationRead.responseCode;
+        requestResponse.httpResponseCode = setNotificationRead.getStatusCode();
         if (requestResponse.httpResponseCode != 204) {
             requestResponse.error = true;
         }
@@ -767,15 +834,16 @@ public class JodelAccount {
 
     /**
      * Gets the recommended channels
+     *
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getRecommendedChannels() {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse recommendedChannels = this.httpAction.getRecommendedChannels();
-        requestResponse.httpResponseCode = recommendedChannels.responseCode;
+        JodelHttpResponse recommendedChannels = this.httpAction.getRecommendedChannels();
+        requestResponse.httpResponseCode = recommendedChannels.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = recommendedChannels.responseMessage;
+            requestResponse.rawResponseMessage = recommendedChannels.toString();
         } else {
             requestResponse.error = true;
         }
@@ -784,16 +852,17 @@ public class JodelAccount {
 
     /**
      * Gets metadata of a channel
+     *
      * @param channel Name of the channel
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getChannelMeta(String channel) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse channelMeta = this.httpAction.getChannelMeta(channel);
-        requestResponse.httpResponseCode = channelMeta.responseCode;
+        JodelHttpResponse channelMeta = this.httpAction.getChannelMeta(channel);
+        requestResponse.httpResponseCode = channelMeta.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            requestResponse.rawResponseMessage = channelMeta.responseMessage;
+            requestResponse.rawResponseMessage = channelMeta.toString();
         } else {
             requestResponse.error = true;
         }
@@ -802,16 +871,17 @@ public class JodelAccount {
 
     /**
      * Follows a channel
+     *
      * @param channel Name of the channel
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse followChannel(String channel) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse follow = this.httpAction.followChannel(channel);
-        requestResponse.httpResponseCode = follow.responseCode;
+        JodelHttpResponse follow = this.httpAction.followChannel(channel);
+        requestResponse.httpResponseCode = follow.getStatusCode();
         if (requestResponse.httpResponseCode == 204) {
-            requestResponse.rawResponseMessage = follow.responseMessage;
+            requestResponse.rawResponseMessage = follow.toString();
         } else {
             requestResponse.error = true;
         }
@@ -820,16 +890,17 @@ public class JodelAccount {
 
     /**
      * Unfollows a channel
+     *
      * @param channel Name of the channel
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse unfollowChannel(String channel) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse unfollow = this.httpAction.unfollowChannel(channel);
-        requestResponse.httpResponseCode = unfollow.responseCode;
+        JodelHttpResponse unfollow = this.httpAction.unfollowChannel(channel);
+        requestResponse.httpResponseCode = unfollow.getStatusCode();
         if (requestResponse.httpResponseCode == 204) {
-            requestResponse.rawResponseMessage = unfollow.responseMessage;
+            requestResponse.rawResponseMessage = unfollow.toString();
         } else {
             requestResponse.error = true;
         }
@@ -838,17 +909,18 @@ public class JodelAccount {
 
     /**
      * Sets the user profile
+     *
      * @param userType Type of user (as defined in JodelUsertype)
-     * @param gender Gender (m or f)
-     * @param age Age of the user
+     * @param gender   Gender (m or f)
+     * @param age      Age of the user
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse setUserProfile(String userType, String gender, int age) {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         if (userType != null && gender != null) {
             this.updateHTTPParameter();
-            JodelHTTPResponse setUserProfile = this.httpAction.setUserProfile(userType, gender, age);
-            requestResponse.httpResponseCode = setUserProfile.responseCode;
+            JodelHttpResponse setUserProfile = this.httpAction.setUserProfile(userType, gender, age);
+            requestResponse.httpResponseCode = setUserProfile.getStatusCode();
             if (requestResponse.httpResponseCode != 204) {
                 requestResponse.error = true;
             }
@@ -861,23 +933,22 @@ public class JodelAccount {
 
     /**
      * Gets your karma
+     *
      * @return The requestResponse of type JodelRequestResponse
      */
     public JodelRequestResponse getKarma() {
         JodelRequestResponse requestResponse = new JodelRequestResponse();
         this.updateHTTPParameter();
-        JodelHTTPResponse karmaResponse = this.httpAction.getKarma();
-        requestResponse.httpResponseCode = karmaResponse.responseCode;
+        JodelHttpResponse karmaResponse = this.httpAction.getKarma();
+        requestResponse.httpResponseCode = karmaResponse.getStatusCode();
         if (requestResponse.httpResponseCode == 200) {
-            String responseKarma = karmaResponse.responseMessage;
+            String responseKarma = karmaResponse.toString();
             requestResponse.rawResponseMessage = responseKarma;
-            JSONParser parserCaptcha = new JSONParser();
             try {
-                JSONObject responseCaptchaJson = (JSONObject) parserCaptcha.parse(responseKarma);
+                JsonObject responseCaptchaJson = (JsonObject) JsonParser.parseString(responseKarma);
                 String karma = responseCaptchaJson.get("karma").toString();
                 requestResponse.responseValues.put("karma", karma);
-
-            } catch (ParseException e) {
+            } catch (Exception e) {
                 requestResponse.rawErrorMessage = e.getMessage();
                 e.printStackTrace();
                 requestResponse.error = true;
@@ -890,6 +961,6 @@ public class JodelAccount {
     }
 
     private void updateHTTPParameter() {
-        this.httpAction.updateAccessValues(this.locationObject, this.accessToken, this.distinctID, this.refreshToken, this.deviceUID, this.expirationDate, this.latitude, this.longitude);
+        this.httpAction.updateAccessValues(this.proxy, this.locationObject, this.accessToken, this.distinctID, this.refreshToken, this.deviceUID, this.expirationDate, this.latitude, this.longitude, this.country);
     }
 }
