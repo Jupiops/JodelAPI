@@ -236,7 +236,6 @@ public class JodelParser {
                 if (jodelNotification.type.equals("vote_post")) {
                     jodelNotification.voteCount = notification.get("vote_count").getAsLong();
                 }
-                ;
                 jodelNotification.scroll = notification.get("scroll").getAsString();
                 jodelNotification.lastInteraction = notification.get("last_interaction").getAsString();
                 jodelNotification.read = notification.get("read").getAsBoolean();

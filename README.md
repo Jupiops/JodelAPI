@@ -1,5 +1,5 @@
 # JodelAPI
-[![Implementation](https://img.shields.io/badge/api--version-4.47.0-brightgreen.svg)]() [![Java](https://img.shields.io/badge/java-8-brightgreen.svg)]()
+[![Implementation](https://img.shields.io/badge/api--version-4.47.0-brightgreen.svg)]() [![Java](https://img.shields.io/badge/java-11-brightgreen.svg)]()
 
 *This is an inofficial library to interact with the private API of the Jodel App. Not affiliated with The Jodel Venture GmbH. API can change at any time so this library might not work in the future.*
 

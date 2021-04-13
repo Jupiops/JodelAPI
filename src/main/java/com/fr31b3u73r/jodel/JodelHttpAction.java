@@ -29,6 +29,35 @@ public class JodelHttpAction {
     protected JodelHttpAction() {
     }
 
+    private static String getDataString(Map<String, Object> params) throws UnsupportedEncodingException {
+        StringBuilder result = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            if (first)
+                first = false;
+            else
+                result.append("&");
+            result.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8.name()));
+            result.append("=");
+            result.append(URLEncoder.encode(String.valueOf(entry.getValue()), StandardCharsets.UTF_8.name()));
+        }
+        return result.toString();
+    }
+
+    private static byte[] readStreamToEnd(final InputStream is) throws IOException {
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        if (is != null) {
+            final byte[] buff = new byte[1024];
+            int read;
+            do {
+                bos.write(buff, 0, (read = is.read(buff)) < 0 ? 0 : read);
+            } while (read >= 0);
+            bos.flush();
+            is.close();
+        }
+        return bos.toByteArray();
+    }
+
     protected void updateAccessValues(Proxy proxy, JsonObject locationObject, String accessToken, String distinctID, String refreshToken, String deviceUID, String expirationDate, String latitude, String longitude, Locale country) {
         this.proxy = proxy;
         this.locationObject = locationObject;
@@ -276,7 +305,6 @@ public class JodelHttpAction {
         return this.sendRequest("POST", "/v3/posts/" + postID + "/giveThanks", null);
     }
 
-
     private JodelHttpResponse sendRequest(String method, String endpoint, Map<String, Object> params, JsonObject payload) {
         JodelHttpResponse httpResponse = new JodelHttpResponse();
         String fullUrl = JodelAccount.API_URL + endpoint;
@@ -405,35 +433,6 @@ public class JodelHttpAction {
             requestSignProperties.put("X-Location", location);
 
         return requestSignProperties;
-    }
-
-    private static String getDataString(Map<String, Object> params) throws UnsupportedEncodingException {
-        StringBuilder result = new StringBuilder();
-        boolean first = true;
-        for (Map.Entry<String, Object> entry : params.entrySet()) {
-            if (first)
-                first = false;
-            else
-                result.append("&");
-            result.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8.name()));
-            result.append("=");
-            result.append(URLEncoder.encode(String.valueOf(entry.getValue()), StandardCharsets.UTF_8.name()));
-        }
-        return result.toString();
-    }
-
-    private static byte[] readStreamToEnd(final InputStream is) throws IOException {
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        if (is != null) {
-            final byte[] buff = new byte[1024];
-            int read;
-            do {
-                bos.write(buff, 0, (read = is.read(buff)) < 0 ? 0 : read);
-            } while (read >= 0);
-            bos.flush();
-            is.close();
-        }
-        return bos.toByteArray();
     }
 
 }

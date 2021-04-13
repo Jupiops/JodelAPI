@@ -11,13 +11,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class JodelAccount {
 
-    JsonObject locationObject = new JsonObject();
-
     static final String API_URL = "https://api.go-tellm.com/api";
     static final String CLIENT_ID = "81e8a76e-1e02-4d17-9ba0-8a7020261b26";
     static final String SECRET = "TNHfHCaBjTvtrjEFsAFQyrHapTHdKbJVcraxnTzd";
     static final String VERSION = "5.16.1";
-
+    JsonObject locationObject = new JsonObject();
     String accessToken = null;
     String deviceUID = null;
     String expirationDate = null;
@@ -163,7 +161,7 @@ public class JodelAccount {
             this.distinctID = responseJson.get("distinct_id").getAsString();
         } else {
             System.err.println("getNewTokens faild! HTTP Status Code: " + requestResponse.getStatusCode()
-                    + " for Device UID: " + this.deviceUID + "\n" + requestResponse.toString());
+                    + " for Device UID: " + this.deviceUID + "\n" + requestResponse);
         }
     }
 
